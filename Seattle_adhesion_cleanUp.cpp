@@ -25,9 +25,9 @@
 #include "core/ChFileutils.h"
 #include "core/ChStream.h"
 
-#include "chrono_utils/ChUtilsCreators.h"
-#include "chrono_utils/ChUtilsGenerators.h"
-#include "chrono_utils/ChUtilsInputOutput.h"
+#include "utils/ChUtilsCreators.h"
+#include "utils/ChUtilsGenerators.h"
+#include "utils/ChUtilsInputOutput.h"
 
 #include "chrono_parallel/physics/ChSystemParallel.h"
 #include "chrono_parallel/lcp/ChLcpSystemDescriptorParallel.h"
