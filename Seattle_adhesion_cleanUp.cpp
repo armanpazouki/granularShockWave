@@ -42,7 +42,8 @@ using std::endl;
 // =============================================================
 // Above headers and namespaces
 
-#define m2mm 1e6//1//1000000
+#define m2mm 1//1e6//1e6//1//1000000
+#define m2mm2 1e-6//1//1 
 
 //#define HEXAGONAL_CLOSE
 #define LINK
@@ -51,25 +52,25 @@ using std::endl;
 
 #define USE_DEM
 
-#define CHRONO_PARALLEL_HAS_OPENGL
+//#undef CHRONO_PARALLEL_HAS_OPENGL
 
 #ifdef CHRONO_PARALLEL_HAS_OPENGL
 	#include "chrono_opengl/ChOpenGLWindow.h"
 #endif
 
 // Parameters you set up to have different simulations
-double yOverlap = 0.000003; // overlap * diameter = (Sam's delta_0) // {0.0 0.0005 0.0015 for phi=2um} {0.0 0.001 0.003 for phi=1um}
-double time_step = 3.0e-9;
-double velocity = 1.0e-3 * m2mm; // excitation velocity || m/s
+double yOverlap = 0.001 * m2mm2; // 
+double time_step = 1e-13;//1.0e-13;
+double velocity = 0 * m2mm;// * m2mm; // excitation velocity || m/s
 
-double simulation_time = 100 * time_step;//3.0e-5;
+double simulation_time = 2e-9;
 bool write_povray_data = false;
-double data_out_step = time_step;//1e-8;       // time interval between data outputs
-double visual_out_step = time_step;//1e-7;     // time interval between PovRay outputs
+double data_out_step = 10*time_step;//1e-8;       // time interval between data outputs
+double visual_out_step = 100*time_step;//1e-7;     // time interval between PovRay outputs
 
 #ifdef USE_DEM
 	//const std::string out_dir = "../Seattle_adhesion_DEM_ov=0.1_ts=1.0e-9_tp=60ts_vel=25_out=1.0e-8";
-	const std::string out_dir = "../Seat_ad_DEM_new_ov0.000003_30xts";
+	const std::string out_dir = "../FinalOnes_noScaling/vel=0";
 	//const std::string out_dir = "../Seattle_adhesion_DEM_test3week";
 #else
 	const std::string out_dir = "../Seattle_adhesion_DVI";
@@ -79,6 +80,9 @@ const std::string pov_dir = out_dir + "/POVRAY";
 
 //const std::string particlePos1_file = out_dir + "/particlePosVel1.dat";
 const std::string particlePos2_file = out_dir + "/particlePosVel2.dat";
+const std::string particlePos3_file = out_dir + "/particlePosVel3.dat";
+
+const std::string allPos_file = out_dir + "/allPosVel.dat";
 //const std::string particlePos3_file = out_dir + "/particlePosVel3.dat";
 const std::string time_file = out_dir + "/time.dat";
 
@@ -94,15 +98,17 @@ void OutputData(ChSystemParallel* sys, int out_frame, double time) {
 
 double gravity = 0.0 * m2mm;//9.81 * m2mm; // m/s/s
 
-double ballRad = 0.5; // micrometer
+double ballRad = 0.5 * m2mm2; // micrometer
 double ballDiam = 2 * ballRad;
 
 float mu = 0.18f; // needless in Seattle model
 float COR = 0.87f; // needless in Seattle model
-float ballDensity = 1060.0f / m2mm / m2mm / m2mm; // kg/m/m/m
+float ballDensity = 1.0f / m2mm / m2mm / m2mm; // kg/m/m/m
 float ballMass = ballDensity * 4.0f / 3.0f * CH_C_PI * ballRad * ballRad * ballRad;
-float Y = 4.04e9 / m2mm; // Pa = N/m/m = kg/s/s/m || to watch out for crazy vibrations - Y is 1000 times smaller
+
+float Y = 1e9;// / m2mm; // Pa = N/m/m = kg/s/s/m || to watch out for crazy vibrations - Y is 1000 times smaller
 float nu = 0.32f;
+
 ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 1, 1);
 
 #ifdef LINK
@@ -114,7 +120,7 @@ ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 
 	//int middleBall = (int)(yLay + 1) / 2 - 1;
 	int lastBall = (int)yLay - 1;
 	int fifthBall = 5; // do not substract 1 because the first ball (index 0) is the wall!!!
-
+	int secondBall = 1;
 #endif
 #ifdef HEXAGONAL_CLOSE
 	double xLay = 10;
@@ -130,7 +136,7 @@ ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 
 
 #ifdef LINK
 	double xDim = ballDiam * xLay; // xLay = 1.0 so no need to multiply it by that xLay
-	double yDim = yLay * ballDiam - (yLay - 1) * ballDiam * yOverlap - 2 * ballDiam * yOverlap; // overlap
+	double yDim = yLay * ballDiam - (yLay - 1) * yOverlap; // overlap
 	double zDim = ballDiam + (zLay - 1.0) * 2.0 * sqrt(2.0) / 3.0 * ballDiam; // zLay = 1.0 so second component is unnecessary
 #endif
 
@@ -141,14 +147,14 @@ ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 
 	double zDim = ballDiam + (zLay - 1.0) * 2.0 * sqrt(2.0) / 3.0 * ballDiam;
 #endif
 
-float mu_ext = 0.18f;
-float COR_ext = 0.87f;
-float density_ext = 1060.0f / m2mm / m2mm / m2mm; // kg/m/m/m
-float mass_ext = ballMass;
-float Y_ext = 4.04e9 / m2mm; // Pa = N/m/m = kg/s/s/m || to watch out for crazy vibrations - Y is 1000 times smaller
-float nu_ext = 0.32f;
+//float mu_ext = 0.18f;
+//float COR_ext = 0.87f;
+//float density_ext = 1060.0f / m2mm / m2mm / m2mm; // kg/m/m/m
+//float mass_ext = ballMass;
+//float Y_ext = 4.04e9 / m2mm; // Pa = N/m/m = kg/s/s/m || to watch out for crazy vibrations - Y is 1000 times smaller
+//float nu_ext = 0.32f;
 
-int threads = 8;
+int threads = 4;
 
 bool thread_tuning = false;
 
@@ -169,7 +175,7 @@ bool thread_tuning = false;
 bool clamp_bilaterals = false;
 double bilateral_clamp_speed = 0.1;
 
-double timeStartPushing = 0*time_step;//3.0e-6; // start time for pushing the wall
+double timeStartPushing = 0;//50*time_step;//3.0e-6; // start time for pushing the wall
 #ifdef VELOCITY_EXCITATION
 	#ifdef USE_DEM
 		//double velocity = 100 * m2mm; // velocity of the first wall || m/s // it's declared above (at the beginning of the code)
@@ -347,7 +353,8 @@ void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId){
 		x = 0.0;
 		z = ballRad;
 		for (int jj = 1; jj <= yLay; jj++){
-			y = -(yLay - 1) * ballRad + (yLay - 1) / 2 * yOverlap * ballDiam + 2 * (jj - 1) * ballRad - 2 * (jj - 1) * ballRad * yOverlap; // overlap
+			//y = -(yLay - 1) * ballRad + (yLay - 1) / 2 * yOverlap +  (jj - 1) * ballDiam - (jj - 1) * yOverlap; // overlap
+			y = (jj - 1)*ballDiam - (jj - 1)*yOverlap;
 			ballId++;
 			AddBall(sys, x, y, z, ballId);
 		}
@@ -355,6 +362,8 @@ void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId){
 #endif
 
 int main(int argc, char* argv[]){
+
+	cout << "ballDensity" << ballDensity;
 
 	if (ChFileutils::MakeDirectory(out_dir.c_str()) < 0) {
 		cout << "Error creating directory " << out_dir << endl;
@@ -459,6 +468,7 @@ int main(int argc, char* argv[]){
 			ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + firstBall + 1));
 			my_system->Get_bodylist()->at(0 + firstBall + 1)->AddRef();
 			ball_X->SetPos_dt(ball_X->GetPos_dt() + ChVector<>(0, velocity, 0));
+			//ball_X->SetPos_dt(ball_X->GetPos() + ChVector<>(0, velocity*time_step, 0));
 		}
 #else
 		//Force excitation
@@ -497,7 +507,7 @@ int main(int argc, char* argv[]){
 			// time information
 
 			FILE * timeWrite = fopen(time_file.c_str(), "a");
-			fprintf(timeWrite, "%.12f,\n", my_system->GetChTime());
+			fprintf(timeWrite, "%.14f,\n", my_system->GetChTime());
 			fclose(timeWrite);
 
 			//// _________________________________________________________________________
@@ -540,12 +550,52 @@ int main(int argc, char* argv[]){
 				ball_5 = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + fifthBall));
 				my_system->Get_bodylist()->at(0 + fifthBall)->AddRef();
 
-				fprintf(PosVelWrite2, "%.12f,%.12f,%.12f,%.12f,%.12f,%.12f,\n",
+				fprintf(PosVelWrite2, "%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,\n",
+				//fprintf(PosVelWrite2, "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,\n",
 					ball_5->GetPos().x, ball_5->GetPos().y, ball_5->GetPos().z,
 					ball_5->GetPos_dt().x, ball_5->GetPos_dt().y, ball_5->GetPos_dt().z);
+				printf( "%.10f\t", ball_5->GetPos().y);
 			}
 
 			fclose(PosVelWrite2);
+
+			// _________________________________________________________________________
+			// first row information
+
+			FILE * PosVelWrite3 = fopen(particlePos3_file.c_str(), "a");
+			{
+				ChSharedPtr<ChBody> ball_1;
+				ball_1 = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + secondBall));
+				my_system->Get_bodylist()->at(0 + secondBall)->AddRef();
+
+				//fprintf(PosVelWrite2, "%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,\n",
+				fprintf(PosVelWrite3, "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,\n",
+					ball_1->GetPos().x, ball_1->GetPos().y, ball_1->GetPos().z,
+					ball_1->GetPos_dt().x, ball_1->GetPos_dt().y, ball_1->GetPos_dt().z);
+				printf("%.10f\n", ball_1->GetPos().y);
+			}
+
+			fclose(PosVelWrite3);
+
+			// _________________________________________________________________________
+			//// all balls position information
+			//{
+			//	FILE * AllWrite2 = fopen(allPos_file.c_str(), "w");
+			//	for (int ii = 0; ii < 22; ii++){
+			//		ChSharedPtr<ChBody> ball_ii;
+			//		ball_ii = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(ii));
+			//		my_system->Get_bodylist()->at(ii)->AddRef();
+
+			//		fprintf(AllWrite2, "%d,%.5e,%.5e,%.5e,%.5e,%.5ef,%.5e,\n",
+			//			//fprintf(PosVelWrite2, "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,\n",
+			//			ii,
+			//			ball_ii->GetPos().x, ball_ii->GetPos().y, ball_ii->GetPos().z,
+			//			ball_ii->GetPos_dt().x, ball_ii->GetPos_dt().y, ball_ii->GetPos_dt().z);
+			//		//printf("%.10f\n", ball_5->GetPos().y);
+			//	}
+			//}
+
+			//fclose(PosVelWrite2);
 
 			//// _________________________________________________________________________
 			//// last row information
@@ -562,7 +612,7 @@ int main(int argc, char* argv[]){
 			//}
 
 			//fclose(PosVelWrite3);
-
+			
 			data_out_frame++;
 		} // end of if - writing data to file
 
