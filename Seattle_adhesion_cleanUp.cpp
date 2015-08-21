@@ -41,39 +41,35 @@ using std::endl;
 
 // =============================================================
 // Above headers and namespaces
-
-#define m2mm 1//1e6//1e6//1//1000000
-#define m2mm2 1e-6//1//1 
-
 //#define HEXAGONAL_CLOSE
-#define LINK
+#define ONE_D_ARRANGEMENT
 
 #define VELOCITY_EXCITATION
 
 #define USE_DEM
 
-//#undef CHRONO_PARALLEL_HAS_OPENGL
+//#undef CHRONO_OPENGL
 
-#ifdef CHRONO_PARALLEL_HAS_OPENGL
+#ifdef CHRONO_OPENGL
 	#include "chrono_opengl/ChOpenGLWindow.h"
 #endif
 
 // Parameters you set up to have different simulations
-double yOverlap = 0.001 * m2mm2; // 
+double yOverlap = 1e-9; //
 double time_step = 1e-13;//1.0e-13;
-double velocity = 0 * m2mm;// * m2mm; // excitation velocity || m/s
+double velocity = 5;// excitation velocity || m/s
 
 double simulation_time = 2e-9;
 bool write_povray_data = false;
-double data_out_step = 10*time_step;//1e-8;       // time interval between data outputs
-double visual_out_step = 100*time_step;//1e-7;     // time interval between PovRay outputs
+double data_out_step = 10 * time_step;//1e-8;       // time interval between data outputs
+double visual_out_step = 100 * time_step;//1e-7;     // time interval between PovRay outputs
 
 #ifdef USE_DEM
-	//const std::string out_dir = "../Seattle_adhesion_DEM_ov=0.1_ts=1.0e-9_tp=60ts_vel=25_out=1.0e-8";
-	const std::string out_dir = "../FinalOnes_noScaling/vel=0";
-	//const std::string out_dir = "../Seattle_adhesion_DEM_test3week";
+	//const std::string out_dir = "Seattle_adhesion_DEM_ov=0.1_ts=1.0e-9_tp=60ts_vel=25_out=1.0e-8";
+	const std::string out_dir = "FinalOnes_noScaling/vel=0";
+	//const std::string out_dir = "Seattle_adhesion_DEM_test3week";
 #else
-	const std::string out_dir = "../Seattle_adhesion_DVI";
+	const std::string out_dir = "Seattle_adhesion_DVI";
 #endif
 
 const std::string pov_dir = out_dir + "/POVRAY";
@@ -96,31 +92,30 @@ void OutputData(ChSystemParallel* sys, int out_frame, double time) {
 	//cout << "time = " << time << flush << endl;
 }
 
-double gravity = 0.0 * m2mm;//9.81 * m2mm; // m/s/s
+double gravity = 0.0; // m/s/s
 
-double ballRad = 0.5 * m2mm2; // micrometer
+double ballRad = 0.5e-6; // micrometer
 double ballDiam = 2 * ballRad;
 
 float mu = 0.18f; // needless in Seattle model
-float COR = 0.87f; // needless in Seattle model
-float ballDensity = 1.0f / m2mm / m2mm / m2mm; // kg/m/m/m
+float ballDensity = 1.0f; // kg/m/m/m
 float ballMass = ballDensity * 4.0f / 3.0f * CH_C_PI * ballRad * ballRad * ballRad;
 
-float Y = 1e9;// / m2mm; // Pa = N/m/m = kg/s/s/m || to watch out for crazy vibrations - Y is 1000 times smaller
+float E = 1e9;// / Young's modulus. Pa = N/m/m = kg/s/s/m || to watch out for crazy vibrations - E is 1000 times smaller
 float nu = 0.32f;
 
 ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 1, 1);
 
-#ifdef LINK
+#ifdef ONE_D_ARRANGEMENT
 	double xLay = 1;
 	double zLay = 1;
 	double yLay = 22; // the lenght of the link, others have to be = 1.0
 
-	int firstBall = 1 - 1;
+	int zerothBall = 1 - 1;
 	//int middleBall = (int)(yLay + 1) / 2 - 1;
 	int lastBall = (int)yLay - 1;
 	int fifthBall = 5; // do not substract 1 because the first ball (index 0) is the wall!!!
-	int secondBall = 1;
+	int firstBall = 1;
 #endif
 #ifdef HEXAGONAL_CLOSE
 	double xLay = 10;
@@ -129,30 +124,28 @@ ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 
 #endif
 
 // xOverlap - for 2D and 3D only
-// yOverlap above - different values for LINK and different for HEXAGONAL_CLOSE because:
-	// in LINK - spheres touch each other in the upright way
+// yOverlap above - different values for ONE_D_ARRANGEMENT and different for HEXAGONAL_CLOSE because:
+	// in ONE_D_ARRANGEMENT - spheres touch each other in the upright way
 	// in HEXAGONAL_CLOSE - they touch each other in the "triangle" way (equilateral triangle to be clear)
 // zOverlap - for 3D only
 
-#ifdef LINK
+//	ChVector<> CameraLocation;
+//	ChVector<> CameraLookAt;
+#ifdef ONE_D_ARRANGEMENT
 	double xDim = ballDiam * xLay; // xLay = 1.0 so no need to multiply it by that xLay
-	double yDim = yLay * ballDiam - (yLay - 1) * yOverlap; // overlap
-	double zDim = ballDiam + (zLay - 1.0) * 2.0 * sqrt(2.0) / 3.0 * ballDiam; // zLay = 1.0 so second component is unnecessary
+	double yDim = ballDiam * (yLay - yOverlap);
+	double zDim = ballDiam * yOverlap; // zLay = 1.0 so second component is unnecessary
+
+	ChVector<> CameraLocation = ChVector<>(xDim / 2.0, yDim / 2.0, 18 * zDim);
+	ChVector<> CameraLookAt = ChVector<>(xDim / 2.0, yDim / 2.0, zDim / 2.0);
 #endif
 
 #ifdef HEXAGONAL_CLOSE
 	// add some overlap to here
 	double xDim = ballDiam * xLay;
-	double yDim = yLay * ballDiam - (yLay - 1) * ballDiam * yOverlap;
-	double zDim = ballDiam + (zLay - 1.0) * 2.0 * sqrt(2.0) / 3.0 * ballDiam;
+	double yDim = ballDiam * (yLay - yOverlap);
+	double zDim = ballDiam * (zLay - 1.0) * 2.0 * sqrt(2.0) / 3.0 * ballDiam;
 #endif
-
-//float mu_ext = 0.18f;
-//float COR_ext = 0.87f;
-//float density_ext = 1060.0f / m2mm / m2mm / m2mm; // kg/m/m/m
-//float mass_ext = ballMass;
-//float Y_ext = 4.04e9 / m2mm; // Pa = N/m/m = kg/s/s/m || to watch out for crazy vibrations - Y is 1000 times smaller
-//float nu_ext = 0.32f;
 
 int threads = 4;
 
@@ -160,11 +153,11 @@ bool thread_tuning = false;
 
 #ifdef USE_DEM
 	//double time_step = 1.0e-9;
-	double tolerance = 0.1;
+	double tolerance = 0.001;
 	int max_iteration_bilateral = 1000;
 #else
 	double time_step = 1e-6;
-	double tolerance = 0.1;
+	double tolerance = 0.001;
 	int max_iteration_normal = 0;
 	int max_iteration_sliding = 1000;
 	int max_iteration_spinning = 0;
@@ -176,15 +169,6 @@ bool clamp_bilaterals = false;
 double bilateral_clamp_speed = 0.1;
 
 double timeStartPushing = 0;//50*time_step;//3.0e-6; // start time for pushing the wall
-#ifdef VELOCITY_EXCITATION
-	#ifdef USE_DEM
-		//double velocity = 100 * m2mm; // velocity of the first wall || m/s // it's declared above (at the beginning of the code)
-	#else
-		double velocity = 1.5 / 10 * m2mm; // velocity of wall
-	#endif
-#else
-	// Force excitation to be think up
-#endif
 
 //bool write_povray_data = true;
 //
@@ -194,7 +178,7 @@ double timeStartPushing = 0;//50*time_step;//3.0e-6; // start time for pushing t
 int data_out_frame = 0;
 int visual_out_frame = 0;
 
-#ifndef LINK
+#ifndef ONE_D_ARRANGEMENT
 	void AddWall(ChSystemParallel* sys, ChSharedPtr<ChBody> wall,
 		int wallId, ChVector<> pos, ChVector<> dim,
 		bool ifFixed, bool visualization){
@@ -238,14 +222,12 @@ void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId){
 	#ifdef USE_DEM
 		ChSharedPtr<ChMaterialSurfaceDEM> ballMat;
 		ballMat = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
-		ballMat->SetYoungModulus(Y);
+		ballMat->SetYoungModulus(E);
 		ballMat->SetPoissonRatio(nu);
-		ballMat->SetRestitution(COR);
 		ballMat->SetFriction(mu);
 	#else
 		ChSharedPtr<ChMaterialSurface> ballMat;
 		ballMat = ChSharedPtr<ChMaterialSurface>(new ChMaterialSurface);
-		ballMat->SetRestitution(COR);
 		ballMat->SetFriction(mu);
 	#endif
 
@@ -344,7 +326,7 @@ void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId){
 	}
 #endif
 
-#ifdef LINK
+#ifdef ONE_D_ARRANGEMENT
 	void AddBalls(ChSystemParallel* sys){
 
 		int ballId = 0;
@@ -354,9 +336,11 @@ void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId){
 		z = ballRad;
 		for (int jj = 1; jj <= yLay; jj++){
 			//y = -(yLay - 1) * ballRad + (yLay - 1) / 2 * yOverlap +  (jj - 1) * ballDiam - (jj - 1) * yOverlap; // overlap
-			y = (jj - 1)*ballDiam - (jj - 1)*yOverlap;
+			y = (jj - 1) * (ballDiam - yOverlap);
 			ballId++;
 			AddBall(sys, x, y, z, ballId);
+
+			printf("ball x y z %f %f %f ******* camera %f %f %f look at %f %f %f\n", 1e6 * x, 1e6 * y, 1e6 * z, 1e6 * CameraLocation.x, 1e6 * CameraLocation.y, 1e6 * CameraLocation.z, 1e6 * CameraLookAt.x, 1e6 * CameraLookAt.y, 1e6 * CameraLookAt.z);
 		}
 	}
 #endif
@@ -386,28 +370,24 @@ int main(int argc, char* argv[]){
 #ifdef USE_DEM
 	cout << "Create DEM-P system" << endl;
 	const std::string title = "Wave propagation in granular media. DEM-P.";
-	ChBody::ContactMethod contact_method = ChBody::DEM;
 	ChSystemParallelDEM* my_system = new ChSystemParallelDEM();
 #else
 	cout << "Create DEM-C system" << endl;
 	const std::string title = "Wave propagation in granular media. DEM-C.";
-	ChBody::ContactMethod contact_method = ChBody::DVI;
 	ChSystemParallelDVI* my_system = new ChSystemParallelDVI();
 #endif
 
 	my_system->Set_G_acc(ChVector<>(0, 0, -gravity));
 
-#ifdef CHRONO_PARALLEL_HAS_OPENGL
+#ifdef CHRONO_OPENGL
 	opengl::ChOpenGLWindow& gl_window = opengl::ChOpenGLWindow::getInstance();
 	gl_window.Initialize(800, 600, title.c_str(), my_system);
 
-	gl_window.SetCamera(ChVector<>(0, 0, 18 * zDim), ChVector<>(xDim / 1000, 0, 0), ChVector<>(0, 0, 1)); // top view
-	//gl_window.SetCamera(ChVector<>(20 * zDim, 0, 0), ChVector<>(0, 0, xDim / 1000 ), ChVector<>(0, 0, 1));// side view
-	//gl_window.SetCamera(ChVector<>(- 4 * xDim, 0.001, 3 * zDim), ChVector<>(0, 0, zDim), ChVector<>(0, 0, 1));
-	//gl_window.SetCamera(ChVector<>(2 * xDim, 2 * yDim, 4 * zDim), ChVector<>(0, 0, 0), ChVector<>(0, 0, 1));
-	//gl_window.SetCamera(ChVector<>(8* xDim, 0.001, 3 * zDim), ChVector<>(0, 0, zDim), ChVector<>(0, 0, 1));
-	//gl_window.SetCamera(ChVector<>(2 * xDim, 2 * yDim, 4 * zDim), ChVector<>(0, 0, 0), ChVector<>(0, 0, 1));
+	gl_window.SetCamera(CameraLocation, CameraLookAt, ChVector<>(0, 0, 1));
+//	gl_window.viewer->render_camera.camera_scale = 2.0/(1000.0);
+//	gl_window.viewer->render_camera.near_clip = .001;
 	gl_window.SetRenderMode(opengl::WIREFRAME);
+
 #endif
 
 	int max_threads = my_system->GetParallelThreadNumber();
@@ -447,8 +427,8 @@ int main(int argc, char* argv[]){
 	// the first and the last sphere is fixed
 	AddBalls(my_system);
 	ChSharedPtr<ChBody> ball_1;
-	ball_1 = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + firstBall)); // 0  because no wall is in there
-	my_system->Get_bodylist()->at(0 + firstBall)->AddRef();
+	ball_1 = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + zerothBall)); // 0  because no wall is in there
+	my_system->Get_bodylist()->at(0 + zerothBall)->AddRef();
 	ball_1->SetBodyFixed(true);
 
 	ChSharedPtr<ChBody> ball_N;
@@ -465,8 +445,8 @@ int main(int argc, char* argv[]){
 		
 			pushed = true;
 			ChSharedPtr<ChBody> ball_X;
-			ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + firstBall + 1));
-			my_system->Get_bodylist()->at(0 + firstBall + 1)->AddRef();
+			ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + zerothBall + 1));
+			my_system->Get_bodylist()->at(0 + zerothBall + 1)->AddRef();
 			ball_X->SetPos_dt(ball_X->GetPos_dt() + ChVector<>(0, velocity, 0));
 			//ball_X->SetPos_dt(ball_X->GetPos() + ChVector<>(0, velocity*time_step, 0));
 		}
@@ -474,7 +454,7 @@ int main(int argc, char* argv[]){
 		//Force excitation
 #endif
 
-#ifdef CHRONO_PARALLEL_HAS_OPENGL
+#ifdef CHRONO_OPENGL
 		if (gl_window.Active()) {
 			gl_window.DoStepDynamics(time_step);
 			gl_window.Render();
@@ -516,8 +496,8 @@ int main(int argc, char* argv[]){
 			//FILE * PosVelWrite1 = fopen(particlePos1_file.c_str(), "a");
 			//{
 			//	ChSharedPtr<ChBody> ball_X;
-			//	ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + firstBall + 1));
-			//	my_system->Get_bodylist()->at(0 + firstBall + 1)->AddRef();
+			//	ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + zerothBall + 1));
+			//	my_system->Get_bodylist()->at(0 + zerothBall + 1)->AddRef();
 
 			//	fprintf(PosVelWrite1, "%f,%f,%f,%f,%f,%f,\n",
 			//		ball_X->GetPos().x, ball_X->GetPos().y, ball_X->GetPos().z,
@@ -565,8 +545,8 @@ int main(int argc, char* argv[]){
 			FILE * PosVelWrite3 = fopen(particlePos3_file.c_str(), "a");
 			{
 				ChSharedPtr<ChBody> ball_1;
-				ball_1 = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + secondBall));
-				my_system->Get_bodylist()->at(0 + secondBall)->AddRef();
+				ball_1 = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(0 + firstBall));
+				my_system->Get_bodylist()->at(0 + firstBall)->AddRef();
 
 				//fprintf(PosVelWrite2, "%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,\n",
 				fprintf(PosVelWrite3, "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f,\n",
