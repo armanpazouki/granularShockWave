@@ -64,7 +64,7 @@ SET(DEMOS "")
 
 
 SET(DEMOS ${DEMOS}
-	Seattle
+	Seattle_adhesion_cleanUp
 	#smarticleParallel
 #icePar	
 )
