@@ -42,8 +42,8 @@ using std::endl;
 // =============================================================
 // Above headers and namespaces
 
-#define m2mm 1//1e6//1e6//1//1000000
-#define m2mm2 1e-6//1//1 
+#define m2mm 1e6//1e6//1e6//1//1000000
+#define m2mm2 1//1e-6//1//1 
 
 //#define HEXAGONAL_CLOSE
 #define LINK
@@ -61,7 +61,7 @@ using std::endl;
 // Parameters you set up to have different simulations
 double yOverlap = 0.001 * m2mm2; // 
 double time_step = 1e-13;//1.0e-13;
-double velocity = 0 * m2mm;// * m2mm; // excitation velocity || m/s
+double velocity = 5 * m2mm;// * m2mm; // excitation velocity || m/s
 
 double simulation_time = 2e-9;
 bool write_povray_data = false;
@@ -70,7 +70,7 @@ double visual_out_step = 100*time_step;//1e-7;     // time interval between PovR
 
 #ifdef USE_DEM
 	//const std::string out_dir = "../Seattle_adhesion_DEM_ov=0.1_ts=1.0e-9_tp=60ts_vel=25_out=1.0e-8";
-	const std::string out_dir = "../FinalOnes_noScaling/vel=0";
+	const std::string out_dir = "../FinalOnes2_noScaling_withMinusByinf/vel=5";
 	//const std::string out_dir = "../Seattle_adhesion_DEM_test3week";
 #else
 	const std::string out_dir = "../Seattle_adhesion_DVI";
@@ -457,6 +457,8 @@ int main(int argc, char* argv[]){
 	ball_N->SetBodyFixed(true);
 
 	bool pushed = false;
+
+	//int jj = 1;
 	while (my_system->GetChTime() <= simulation_time) {
 
 #ifdef VELOCITY_EXCITATION
