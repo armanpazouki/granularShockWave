@@ -99,16 +99,9 @@ endif()
 # (B) Path to the top of the source tree for this project
 # - for access to utility headers
 
-<<<<<<< HEAD
 include_directories(
     ${CHRONO_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}
-=======
-SET(DEMOS ${DEMOS}
-	Seattle_adhesion_cleanUp
-	#smarticleParallel
-#icePar	
->>>>>>> origin/master
 )
 
 #--------------------------------------------------------------
