@@ -57,7 +57,7 @@ using std::endl;
 // Parameters you set up to have different simulations
 double yOverlap = 1e-9; //
 double time_step = 1e-13;//1.0e-13;
-double velocity = 5;// excitation velocity || m/s
+double velocity = 500;// excitation velocity || m/s
 
 double simulation_time = 2e-9;
 bool write_povray_data = false;
@@ -66,7 +66,8 @@ double visual_out_step = 100 * time_step;//1e-7;     // time interval between Po
 
 #ifdef USE_DEM
 	//const std::string out_dir = "Seattle_adhesion_DEM_ov=0.1_ts=1.0e-9_tp=60ts_vel=25_out=1.0e-8";
-	const std::string out_dir = "FinalOnes_noScaling/vel=0";
+	const std::string out_dir1 = "FinalOnes_noScaling";
+	const std::string out_dir = out_dir1 + "/vel=500";
 	//const std::string out_dir = "Seattle_adhesion_DEM_test3week";
 #else
 	const std::string out_dir = "Seattle_adhesion_DVI";
@@ -137,7 +138,8 @@ ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 
 	double zDim = ballDiam * yOverlap; // zLay = 1.0 so second component is unnecessary
 
 	ChVector<> CameraLocation = ChVector<>(xDim / 2.0, yDim / 2.0, 18 * zDim);
-	ChVector<> CameraLookAt = ChVector<>(xDim / 2.0, yDim / 2.0, zDim / 2.0);
+	ChVector<> CameraLookAt = ChVector<>(-1, 0.2, 0.3);
+	//ChVector<> CameraLookAt = ChVector<>(xDim / 2.0 + 1e-8, yDim / 2.0 + 1e-8, 1e-8);
 #endif
 
 #ifdef HEXAGONAL_CLOSE
@@ -349,6 +351,10 @@ int main(int argc, char* argv[]){
 
 	cout << "ballDensity" << ballDensity;
 
+	if (ChFileutils::MakeDirectory(out_dir1.c_str()) < 0) {
+		cout << "Error creating directory " << out_dir1 << endl;
+		return 1;
+	}
 	if (ChFileutils::MakeDirectory(out_dir.c_str()) < 0) {
 		cout << "Error creating directory " << out_dir << endl;
 		return 1;
@@ -383,7 +389,7 @@ int main(int argc, char* argv[]){
 	opengl::ChOpenGLWindow& gl_window = opengl::ChOpenGLWindow::getInstance();
 	gl_window.Initialize(800, 600, title.c_str(), my_system);
 
-	gl_window.SetCamera(CameraLocation, CameraLookAt, ChVector<>(0, 0, 1));
+	gl_window.SetCamera(CameraLocation, CameraLookAt, ChVector<>(0, 0, 1),1e-6,1e-6);
 //	gl_window.viewer->render_camera.camera_scale = 2.0/(1000.0);
 //	gl_window.viewer->render_camera.near_clip = .001;
 	gl_window.SetRenderMode(opengl::WIREFRAME);
