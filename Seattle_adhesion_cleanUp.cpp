@@ -155,7 +155,7 @@ bool thread_tuning = false;
 
 #ifdef USE_DEM
 	//double time_step = 1.0e-9;
-	double tolerance = 0.001;
+	double tolerance = 1e-9;//0.001;
 	int max_iteration_bilateral = 1000;
 #else
 	double time_step = 1e-6;
@@ -250,6 +250,10 @@ void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId){
 	ball->GetCollisionModel()->ClearModel();
 	utils::AddSphereGeometry(ball.get_ptr(), ballRad, ChVector<double>(0, 0, 0), ChQuaternion<double>(1, 0, 0, 0), true);
 	ball->GetCollisionModel()->SetFamily(3);
+	ball->GetCollisionModel()->SetDefaultSuggestedEnvelope(.1 * ballDiam);
+	ball->GetCollisionModel()->SetDefaultSuggestedMargin(.1 * ballDiam);
+
+
 	ball->GetCollisionModel()->BuildModel();
 
 	sys->AddBody(ball);
@@ -389,7 +393,7 @@ int main(int argc, char* argv[]){
 	opengl::ChOpenGLWindow& gl_window = opengl::ChOpenGLWindow::getInstance();
 	gl_window.Initialize(800, 600, title.c_str(), my_system);
 
-	gl_window.SetCamera(CameraLocation, CameraLookAt, ChVector<>(0, 0, 1),1e-6,1e-6);
+	gl_window.SetCamera(CameraLocation, ChVector<>(-1, 0.2, 0.3), ChVector<>(0, 0, 1),1e-6,1e-6);
 //	gl_window.viewer->render_camera.camera_scale = 2.0/(1000.0);
 //	gl_window.viewer->render_camera.near_clip = .001;
 	gl_window.SetRenderMode(opengl::WIREFRAME);
@@ -443,7 +447,30 @@ int main(int argc, char* argv[]){
 	ball_N->SetBodyFixed(true);
 
 	bool pushed = false;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	while (my_system->GetChTime() <= simulation_time) {
+		printf("Total number of contacts %d\n", my_system->GetNcontacts());
+		for (int i = 0; i < my_system->Get_bodylist()->size(); i++) {
+			ChVector<> mPos = 1e6 * (*(my_system->Get_bodylist()))[i]->GetPos();
+			printf("pos e6 %f %f %f \n", mPos.x, mPos.y, mPos.z);
+		}
 
 #ifdef VELOCITY_EXCITATION
 		// push the first sphere after the certain time
