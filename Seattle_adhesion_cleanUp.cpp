@@ -54,8 +54,10 @@ using std::endl;
 	#include "chrono_opengl/ChOpenGLWindow.h"
 #endif
 
+double geomScale = 1;//1e6;
+
 // Parameters you set up to have different simulations
-double yOverlap = 1e-9; //
+double yOverlap = 1e-9 * geomScale; //
 double time_step = 1e-13;//1.0e-13;
 double velocity = 500;// excitation velocity || m/s
 
@@ -95,7 +97,7 @@ void OutputData(ChSystemParallel* sys, int out_frame, double time) {
 
 double gravity = 0.0; // m/s/s
 
-double ballRad = 0.5e-6; // micrometer
+double ballRad = 0.5e-6 * geomScale; // micrometer
 double ballDiam = 2 * ballRad;
 
 float mu = 0.18f; // needless in Seattle model
@@ -134,7 +136,7 @@ ChVector<> inertia = (2.0 / 5.0) * ballMass * ballRad * ballRad * ChVector<>(1, 
 //	ChVector<> CameraLookAt;
 #ifdef ONE_D_ARRANGEMENT
 	double xDim = ballDiam * xLay; // xLay = 1.0 so no need to multiply it by that xLay
-	double yDim = ballDiam * (yLay - yOverlap);
+	double yDim = (ballDiam - yOverlap) * yLay;
 	double zDim = ballDiam * yOverlap; // zLay = 1.0 so second component is unnecessary
 
 	ChVector<> CameraLocation = ChVector<>(xDim / 2.0, yDim / 2.0, 18 * zDim);
@@ -155,7 +157,7 @@ bool thread_tuning = false;
 
 #ifdef USE_DEM
 	//double time_step = 1.0e-9;
-	double tolerance = 1e-9;//0.001;
+	double tolerance = 1e-3;//0.001;   // Arman, check this
 	int max_iteration_bilateral = 1000;
 #else
 	double time_step = 1e-6;
