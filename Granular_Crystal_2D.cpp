@@ -25,9 +25,9 @@
 #include "core/ChFileutils.h"
 #include "core/ChStream.h"
 
-#include "unit_PARALLEL/chrono_utils/ChUtilsCreators.h"
-#include "unit_PARALLEL/chrono_utils/ChUtilsGenerators.h"
-#include "unit_PARALLEL/chrono_utils/ChUtilsInputOutput.h"
+#include "utils/ChUtilsCreators.h"
+#include "utils/ChUtilsGenerators.h"
+#include "utils/ChUtilsInputOutput.h"
 
 #include "chrono_parallel/physics/ChSystemParallel.h"
 #include "chrono_parallel/lcp/ChLcpSystemDescriptorParallel.h"
@@ -44,8 +44,6 @@ using std::endl;
 #define HEXAGONAL_CLOSE_2D
 
 #define VELOCITY_EXCITATION
-
-#define USE_DEM
 
 #undef CHRONO_OPENGL
 
@@ -66,10 +64,8 @@ double data_out_step = 50 * time_step;//1e-8;       // time interval between dat
 double visual_out_step = 50 * time_step;//1e-7;     // time interval between PovRay outputs
 double energy_out_step = 1000 * time_step; // interval between output conderning potential and kinetoc energy
 
-#ifdef USE_DEM
-	const std::string out_dir1 = "Seattle_3";
-	const std::string out_dir = out_dir1 + "/2dFreeSurface_101x100_vel=5";
-#endif
+const std::string out_dir1 = "Seattle_3";
+const std::string out_dir = out_dir1 + "/2dFreeSurface_101x100_vel=5";
 
 const std::string pov_dir = out_dir + "/POVRAY";
 
@@ -132,11 +128,9 @@ int threads = 2;
 
 bool thread_tuning = false;
 
-#ifdef USE_DEM
-	//double time_step = 1.0e-9; // is was set up above
-	double tolerance = 1.0;//0.001;   // Arman, check this
-	int max_iteration_bilateral = 50;
-#endif
+//double time_step = 1.0e-9; // is was set up above
+double tolerance = 1.0;//0.001;   // Arman, check this
+int max_iteration_bilateral = 50;
 
 bool clamp_bilaterals = false;
 double bilateral_clamp_speed = 0.1;
@@ -159,19 +153,12 @@ int energy_out_frame = 0;
 //		wall->SetBodyFixed(ifFixed);
 //		wall->SetCollide(true);
 //
-//		#ifdef USE_DEM
 //			ChSharedPtr<ChMaterialSurfaceDEM> mat_ext;
 //			mat_ext = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
 //			mat_ext->SetYoungModulus(Y_ext);
 //			mat_ext->SetPoissonRatio(nu_ext);
 //			mat_ext->SetRestitution(COR_ext);
 //			mat_ext->SetFriction(mu_ext);
-//		#else
-//			ChSharedPtr<ChMaterialSurface> mat_ext;
-//			mat_ext = ChSharedPtr<ChMaterialSurface>(new ChMaterialSurface);
-//			mat_ext->SetRestitution(COR_ext);
-//			mat_ext->SetFriction(mu_ext);
-//		#endif
 //
 //		wall->SetMaterialSurface(mat_ext);
 //
@@ -188,13 +175,11 @@ int energy_out_frame = 0;
 
 void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId, bool ifFixed){
 
-	#ifdef USE_DEM
 		ChSharedPtr<ChMaterialSurfaceDEM> ballMat;
 		ballMat = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
 		ballMat->SetYoungModulus(E);
 		ballMat->SetPoissonRatio(nu);
 		ballMat->SetFriction(mu);
-	#endif
 
 	ChSharedBodyPtr ball(new ChBody(new ChCollisionModelParallel));
 
@@ -320,11 +305,9 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
-#ifdef USE_DEM
 	cout << "Create DEM-P system" << endl;
 	const std::string title = "Wave propagation in granular media. DEM-P.";
 	ChSystemParallelDEM* my_system = new ChSystemParallelDEM();
-#endif
 
 	my_system->Set_G_acc(ChVector<>(0, 0, -gravity));
 
@@ -354,10 +337,8 @@ int main(int argc, char* argv[]){
 	my_system->GetSettings()->solver.clamp_bilaterals = clamp_bilaterals;
 	my_system->GetSettings()->solver.bilateral_clamp_speed = bilateral_clamp_speed;
 
-#ifdef USE_DEM
 	my_system->GetSettings()->solver.contact_force_model = SEATTLE;
 	my_system->GetSettings()->solver.tangential_displ_mode = MULTI_STEP;
-#endif
 
 	my_system->GetSettings()->collision.bins_per_axis = I3(20, 1, 20);
 	my_system->GetSettings()->collision.narrowphase_algorithm = NARROWPHASE_HYBRID_MPR;
@@ -468,9 +449,7 @@ int main(int argc, char* argv[]){
 
 		if (my_system->GetChTime() >= data_out_frame * data_out_step) {
 
-#ifndef USE_DEM
 			my_system->CalculateContactForces();
-#endif
 
 			// _________________________________________________________________________
 			// time information
