@@ -63,7 +63,7 @@ endif()
 
 set(DEMOS
 	Seattle_adhesion_cleanUp
-	Seattle_2dFreeSurface_101x100_vel=5
+	2dFreeSurface_101x100_vel5
 )
 
 #--------------------------------------------------------------
