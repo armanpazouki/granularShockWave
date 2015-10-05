@@ -62,8 +62,8 @@ endif()
 #--------------------------------------------------------------
 
 set(DEMOS
-	Seattle_adhesion_cleanUp
-	2dFreeSurface_101x100_vel5
+	#Seattle_adhesion_cleanUp
+	Granular_Crystal_2D
 )
 
 #--------------------------------------------------------------
