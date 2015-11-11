@@ -69,7 +69,7 @@ double energy_out_step = 1000 * time_step;  // interval between output
                                             // energy
 
 const std::string out_dir1 = "Seattle_3";
-const std::string out_dir = out_dir1 + "/2dFreeSurface_101x100_vel=5";
+const std::string out_dir = out_dir1 + "/2dFreeSurface_101x100_vel=100_noGrav";
 
 const std::string pov_dir = out_dir + "/POVRAY";
 
@@ -87,7 +87,7 @@ void OutputData(ChSystemParallel* sys, int out_frame, double time) {
   utils::WriteShapesPovray(sys, filename, false);
 }
 
-double gravity = 9.81 * geomScale;  // m/s/s
+double gravity = 0.0;//9.81 * geomScale;  // m/s/s
 
 double ballRad = 0.5;  // 0.5e-6 * geomScale; // micrometer
 double ballDiam = 2.0 * ballRad;
@@ -497,6 +497,7 @@ int main(int argc, char* argv[]) {
         fprintf(energyFile, "\n");
       }
       fclose(energyFile);
+      energy_out_frame++;
     }
 
     if (my_system->GetChTime() >= data_out_frame * data_out_step) {
