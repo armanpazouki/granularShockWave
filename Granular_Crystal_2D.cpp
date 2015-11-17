@@ -65,6 +65,11 @@ double energy_out_step = 1000 * time_step;  // interval between output
 											// conderning potential and kinetoc
 											// energy
 
+enum RestrainModel {
+	constraint, force
+};
+RestrainModel resModel = constraint;
+
 const std::string out_dir1 = "Seattle_3";
 const std::string out_dir = out_dir1 + "/2dFreeSurface_101x100_vel=100_noGrav";
 
@@ -78,6 +83,7 @@ const std::string time_file = out_dir + "/time.dat";
 
 const std::string checkPoint_file = out_dir + "/checkPoint.dat";
 
+ChSharedPtr<ChBody> ground;
 void OutputData(ChSystemParallelDEM* sys, int out_frame, double time) {
 	char filename[100];
 	sprintf(filename, "%s/data_%04d.dat", pov_dir.c_str(), out_frame);
@@ -381,7 +387,7 @@ double TotalEnergy(ChSystemParallelDEM * my_system, chrono::int2 bRange) {
 void CreateGround(ChSystemParallelDEM * my_system) {
 	ChSharedPtr<ChMaterialSurfaceDEM> groundMat = ChSharedPtr<
 			ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
-	ChSharedBodyPtr ground(new ChBody(new ChCollisionModelParallel));
+	ground = ChSharedPtr<ChBody>(new ChBody(new ChCollisionModelParallel));
 	ground->SetMaterialSurface(groundMat);
 	ground->SetIdentifier(0);
 	ground->SetMass(10 * ballMass);
@@ -478,8 +484,26 @@ chrono::int2 AddBalls(ChSystemParallelDEM* sys) {
 	return range;
 }
 // =============================================================================
+// Function to calculate system's energy
+void RestrainParticles(ChSystemParallelDEM * my_system, chrono::int2 bRange) {
+	int numParticles = bRange.y - bRange.x;
+	for (int i = 0; i < numParticles; i++) {
+		ChSharedPtr<ChBody> body = my_system->Get_bodylist()->at(bRange.x + i);
+
+		// Constrain spindles in a horizontal plane (based on current post location)
+		ChSharedPtr<ChLinkLockPointPlane> part_on_YPlane = ChSharedPtr<
+				ChLinkLockPointPlane>(new ChLinkLockPointPlane());
+		part_on_YPlane->SetNameString("particle_plane_constraint");
+		part_on_YPlane->Initialize(body, ground,
+				ChCoordsys<>(body->GetPos(), Q_from_AngAxis(CH_C_PI / 2, VECT_X))); // By default, the constraint is in the z_direction. Therefore, it needs to rotate to the y-direction.
+		my_system->AddLink(part_on_YPlane);
+	}
+}
+// =============================================================================
 // bRange denotes the range of particles in ChSystem body list; i.e. start and end indices
 void PrintResults(ChSystemParallelDEM * my_system, chrono::int2 bRange) {
+	static int count = -1;
+	count++;
 	if (my_system->GetChTime() >= data_out_frame * data_out_step) {
 		// _________________________________________________________________________
 		// time information
@@ -534,6 +558,17 @@ void PrintResults(ChSystemParallelDEM * my_system, chrono::int2 bRange) {
 	}  // end of if - writing data to file
 
 // ________________________________________________________________
+// print energy
+	const std::string fileEnergy = std::string("Energy.csv");
+	std::ofstream outEnergy;
+	if (count == 0) {
+		outEnergy.open(fileEnergy.c_str());
+	} else {
+		outEnergy.open(fileEnergy.c_str(), std::ios::app);
+	}
+	outEnergy << my_system->GetChTime() << ", "
+			<< TotalEnergy(my_system, bRange) << std::endl;
+// ________________________________________________________________
 // Produce POV-Ray data
 	if (write_povray_data
 			&& my_system->GetChTime() >= visual_out_frame * visual_out_step) {
@@ -557,7 +592,8 @@ void PrintResults(ChSystemParallelDEM * my_system, chrono::int2 bRange) {
 		double maxVelocity = 0;
 
 		for (int i = bRange.x; i < bRange.y; i++) {
-			ChSharedPtr<ChBody> ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(i));
+			ChSharedPtr<ChBody> ball_X = ChSharedPtr<ChBody>(
+					my_system->Get_bodylist()->at(i));
 
 			double velo = sqrt(
 					ball_X->GetPos_dt().x * ball_X->GetPos_dt().x
@@ -593,11 +629,14 @@ void PrintResults(ChSystemParallelDEM * my_system, chrono::int2 bRange) {
 				visual_out_frame + 1);
 		FILE* AllVelColor_a = fopen(AllVelColor_file, "w");
 
-		ChSharedPtr<ChBody> ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(bRange.y - 1));
-		fprintf(AllVelColor_a, "%.9f,\n", ball_X->GetPos_dt().Length() / velocity); // Arman: I don't know what is this, just kept it here for now.
+		ChSharedPtr<ChBody> ball_X = ChSharedPtr<ChBody>(
+				my_system->Get_bodylist()->at(bRange.y - 1));
+		fprintf(AllVelColor_a, "%.9f,\n",
+				ball_X->GetPos_dt().Length() / velocity); // Arman: I don't know what is this, just kept it here for now.
 
 		for (int i = bRange.x; i < bRange.y; i++) {
-			ChSharedPtr<ChBody> ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(i));
+			ChSharedPtr<ChBody> ball_X = ChSharedPtr<ChBody>(
+					my_system->Get_bodylist()->at(i));
 			double velo = ball_X->GetPos_dt().Length();
 			fprintf(AllVelColor_a, "%.9f,\n", velo / velocity);
 		}
@@ -664,8 +703,10 @@ int main(int argc, char* argv[]) {
 #endif
 
 	chrono::int2 bRange = AddBalls(my_system);
-	CreateGround(my_system);
-
+	CreateGround(my_system); // preferably, call CreateGround after AddBalls due to indexing issues of the balls in body_list; although I must have figured it already.
+	if (resModel == constraint) {
+		RestrainParticles(my_system, bRange);
+	}
 
 	bool pushed = false;
 
@@ -694,7 +735,9 @@ int main(int argc, char* argv[]) {
 		my_system->DoStepDynamics(time_step);
 #endif
 
-		BringToPlane(my_system, bRange);
+		if (resModel == force) {
+			BringToPlane(my_system, bRange);
+		}
 		PrintResults(my_system, bRange);
 		if (my_system->GetChTime() >= energy_out_frame * energy_out_step) {
 
