@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Michal Kwarta
+// Authors: Michal Kwarta, Arman Pazouki
 // =============================================================================
 //
 //
@@ -81,7 +81,7 @@ const std::string time_file = out_dir + "/time.dat";
 
 const std::string checkPoint_file = out_dir + "/checkPoint.dat";
 
-void OutputData(ChSystemParallel* sys, int out_frame, double time) {
+void OutputData(ChSystemParallelDEM* sys, int out_frame, double time) {
   char filename[100];
   sprintf(filename, "%s/data_%04d.dat", pov_dir.c_str(), out_frame);
   utils::WriteShapesPovray(sys, filename, false);
@@ -154,7 +154,7 @@ int visual_out_frame = 0;
 int energy_out_frame = 0;
 
 //#ifndef ONE_D_ARRANGEMENT
-//	void AddWall(ChSystemParallel* sys, ChSharedPtr<ChBody> wall,
+//	void AddWall(ChSystemParallelDEM* sys, ChSharedPtr<ChBody> wall,
 //		int wallId, ChVector<> pos, ChVector<> dim,
 //		bool ifFixed, bool visualization){
 //
@@ -209,8 +209,63 @@ void SetArgumentsForMbdFromInput(int argc, char* argv[]) {
   }
 }
 // =============================================================================
+// Function to calculate system's energy
+double TotalEnergy(ChSystemParallelDEM & mSystem) {
+	double kEpE_Energy = 0;
 
-void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId,
+	// -----------------------------------
+	// ---- kinetic and potential energy
+	// -----------------------------------
+
+	for (int i = 0; i < mSystem.Get_bodylist()->size(); i ++) {
+		ChSharedPtr<ChBody> body = mSystem.Get_bodylist()->at(i);
+		ChVector<> rotEnergyComps = 0.5 * body->GetInertiaXX() * body->GetWvel_loc() * body->GetWvel_loc();
+		double kineticEnergy = 0.5 * body->GetMass() * body->GetPos_dt().Length2() + rotEnergyComps.x + rotEnergyComps.y + rotEnergyComps.z;
+		ChVector<> potVec = body->GetMass() * (mSystem.Get_G_acc() * body->GetPos());
+		double potentialEnergy = potVec.x + potVec.y + potVec.z;
+		kEpE_Energy += kineticEnergy + potentialEnergy;
+	}
+
+	// -----------------------------------
+	// ---- contact energy
+	// -----------------------------------
+
+	double contactEnergy = 0;
+	for (int i = 0; i < mSystem.data_manager->host_data.dpth_rigid_rigid.size(); i++) {
+		real depth = -1 * mSystem.data_manager->host_data.dpth_rigid_rigid[i]; // depth is a negative number when the two objects are in contact.
+		if (depth < 0) {
+			continue;
+		}
+		chrono::int2 ids = mSystem.data_manager->host_data.bids_rigid_rigid[i];
+		ChSharedPtr<ChBody> body1 = mSystem.Get_bodylist()->at(ids.x);
+		ChSharedPtr<ChBody> body2 = mSystem.Get_bodylist()->at(ids.y);
+
+
+		real2* elastic_moduli = mSystem.data_manager->host_data.elastic_moduli.data();
+        real Y1 = elastic_moduli[ids.x].x;
+        real Y2 = elastic_moduli[ids.y].x;
+        real nu1 = elastic_moduli[ids.x].y;
+        real nu2 = elastic_moduli[ids.y].y;
+        real inv_E = (1 - nu1 * nu1) / Y1 + (1 - nu2 * nu2) / Y2;
+        real inv_G = 2 * (2 + nu1) * (1 - nu1) / Y1 + 2 * (2 + nu2) * (1 - nu2) / Y2;
+
+        real E_eff = 1 / inv_E;
+        real r_eff = mSystem.data_manager->host_data.erad_rigid_rigid[i];
+
+        double HertzEnergy = 8.0 / 15.0 * E_eff * chrono::Sqrt(r_eff) * pow(depth, 2.5);
+
+        real* adhesionMultDMT = mSystem.data_manager->host_data.adhesionMultDMT_data.data();
+        real adhesionMultDMT_eff = chrono::Min(adhesionMultDMT[ids.x], adhesionMultDMT[ids.x]);
+
+        double DMT_Energy = adhesionMultDMT_eff * chrono::Sqrt(r_eff) * depth;
+
+        contactEnergy += (HertzEnergy - DMT_Energy);
+	}
+	return kEpE_Energy + contactEnergy;
+}
+// =============================================================================
+
+void AddBall(ChSystemParallelDEM* sys, double x, double y, double z, int ballId,
              bool ifFixed) {
   ChSharedPtr<ChMaterialSurfaceDEM> ballMat;
   ballMat = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
@@ -249,7 +304,7 @@ void AddBall(ChSystemParallel* sys, double x, double y, double z, int ballId,
 #ifdef HEXAGONAL_CLOSE_2D
 // =============================================================================
 
-void AddBalls(ChSystemParallel* sys) {
+void AddBalls(ChSystemParallelDEM* sys) {
   int ballId = 0;
 
   bool ifFixed = false;  // before figuring out periodic boundaries let spheres
@@ -474,30 +529,36 @@ int main(int argc, char* argv[]) {
 #endif
 
     if (my_system->GetChTime() >= energy_out_frame * energy_out_step) {
-      char energyFileName[100];
-      sprintf(energyFileName, "%s/energy%04d.dat", energy_dir.c_str(),
-              energy_out_frame + 1);
-      FILE* energyFile = fopen(energyFileName, "w");
 
-      int licznik = 0;
-      for (int jj = 0; jj < xLay; jj++) {
-        for (int ii = 0; ii < zLay; ii++) {
-          ChSharedPtr<ChBody> ball_X;
-          ball_X = ChSharedPtr<ChBody>(my_system->Get_bodylist()->at(licznik));
-          my_system->Get_bodylist()->at(licznik)->AddRef();
 
-          double height = ball_X->GetPos().z;
-          double velMag = sqrt(ball_X->GetPos_dt().x * ball_X->GetPos_dt().x +
-                               ball_X->GetPos_dt().z * ball_X->GetPos_dt().z);
-          double angVel = ball_X->GetWvel_par().y;
 
-          fprintf(energyFile, "%.13f,%.13f,%.13f,", height, velMag, angVel);
-          licznik++;
-        }
-        fprintf(energyFile, "\n");
-      }
-      fclose(energyFile);
-      energy_out_frame++;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 
     if (my_system->GetChTime() >= data_out_frame * data_out_step) {
